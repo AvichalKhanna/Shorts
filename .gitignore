@@ -1,0 +1,16 @@
+# Environment
+.env
+
+# Google Auth
+client_secrets.json
+yt_token.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+
+# Temp files
+*.tmp
+*.ass
