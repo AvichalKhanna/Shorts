@@ -19,3 +19,7 @@ faster-whisper
 
 # Env vars
 python-dotenv
+
+#Fast API
+fastapi
+uvicorn[standard]
