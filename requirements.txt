@@ -26,3 +26,7 @@ uvicorn[standard]
 
 #Supabase 
 supabase
+
+#google auth 
+google-auth-oauthlib
+google-api-python-client
