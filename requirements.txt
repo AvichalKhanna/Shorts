@@ -1,0 +1,21 @@
+# Web scraping
+requests
+beautifulsoup4
+
+# Playwright (browser automation + recording + verification)
+playwright
+
+# Groq (TTS + optional Whisper)
+groq
+
+# Google Gemini (script generation)
+google-genai
+
+# TTS fallback
+pyttsx3
+
+# Subtitle burning (ffmpeg is system-level, not pip)
+faster-whisper
+
+# Env vars
+python-dotenv

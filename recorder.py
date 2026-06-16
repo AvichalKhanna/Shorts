@@ -76,7 +76,7 @@ async def _wait_for_page_ready(page, timeout: int = 25_000) -> None:
 # ─────────────────────────────────────────────
 
 async def _natural_scroll(page, total_height: int) -> None:
-    steps = int(((total_height / 900) * 2) + 1)
+    steps = int(((total_height / 900) * 100) + 20)
     chunk = total_height / steps
     for i in range(steps):
         # ease-in-out: slow start, fast middle, slow end
@@ -87,9 +87,9 @@ async def _natural_scroll(page, total_height: int) -> None:
 
         # pause longer at start and end, shorter in middle
         if i < 2 or i > steps - 3:
-            await page.wait_for_timeout(2500)
+            await page.wait_for_timeout(20)
         else:
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(5)
 
 
 # ─────────────────────────────────────────────
@@ -100,8 +100,8 @@ async def record_portfolio(
     portfolio: Portfolio,
     *,
     phone: bool = False,          # ← default is DESKTOP
-    linger_top_ms: int = 3300,
-    linger_bottom_ms: int = 4000,
+    linger_top_ms: int = 500,
+    linger_bottom_ms: int = 500,
     output_dir: Path = RECORDINGS_DIR,
 ) -> Path:
     """
