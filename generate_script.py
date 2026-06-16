@@ -12,6 +12,16 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+# Fallback chain — tries each model in order
+MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3.1.-flash",
+]
+
+MAX_RETRIES = 3
+RETRY_DELAY = 10  # seconds between retries
+
 
 def get_video_duration(video_path: str) -> float:
     result = subprocess.run(
@@ -22,29 +32,9 @@ def get_video_duration(video_path: str) -> float:
     return float(data["format"]["duration"])
 
 
-def process_portfolio(video_path: str) -> str:
-    duration = get_video_duration(video_path)
-    print(f"Video duration: {duration:.1f}s")
-
-    print("Uploading video to Gemini...")
-    with open(video_path, "rb") as f:
-        video_file = client.files.upload(
-            file=f,
-            config=types.UploadFileConfig(mime_type="video/webm")
-        )
-
-    while video_file.state.name == "PROCESSING":
-        print("  Processing...")
-        time.sleep(3)
-        video_file = client.files.get(name=video_file.name)
-
-    if video_file.state.name == "FAILED":
-        raise ValueError("Gemini failed to process the video")
-
-    print("Generating script...")
-
+def _generate_with_model(model: str, video_file, duration: float) -> str:
     response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
+        model=model,
         contents=types.Content(
             role="user",
             parts=[
@@ -71,15 +61,63 @@ Output the script and nothing else.""")
             ]
         )
     )
+    return response.text.strip()
 
-    script = response.text.strip()
 
-    print("\n--- SCRIPT ---")
-    print(script)
-    print(f"\nWord count: {len(script.split())} words")
-    print("--------------")
+def process_portfolio(video_path: str) -> str:
+    duration = get_video_duration(video_path)
+    print(f"Video duration: {duration:.1f}s")
 
-    return script
+    print("Uploading video to Gemini...")
+    with open(video_path, "rb") as f:
+        video_file = client.files.upload(
+            file=f,
+            config=types.UploadFileConfig(mime_type="video/webm")
+        )
+
+    while video_file.state.name == "PROCESSING":
+        print("  Processing...")
+        time.sleep(3)
+        video_file = client.files.get(name=video_file.name)
+
+    if video_file.state.name == "FAILED":
+        raise ValueError("Gemini failed to process the video")
+
+    print("Generating script...")
+
+    last_error = None
+    for model in MODELS:
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                print(f"  Trying {model} (attempt {attempt}/{MAX_RETRIES})...")
+                script = _generate_with_model(model, video_file, duration)
+
+                print("\n--- SCRIPT ---")
+                print(script)
+                print(f"\nWord count: {len(script.split())} words")
+                print("--------------")
+
+                return script
+
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                is_503 = "503" in err_str or "UNAVAILABLE" in err_str
+                is_429 = "429" in err_str or "RESOURCE_EXHAUSTED" in err_str
+
+                if is_503 or is_429:
+                    print(f"  ⚠  {model} unavailable: {e}")
+                    if attempt < MAX_RETRIES:
+                        print(f"  Waiting {RETRY_DELAY}s before retry...")
+                        time.sleep(RETRY_DELAY)
+                    else:
+                        print(f"  Giving up on {model}, trying next model...")
+                    continue
+                else:
+                    # Non-retryable error — raise immediately
+                    raise
+
+    raise RuntimeError(f"All models failed. Last error: {last_error}")
 
 
 if __name__ == "__main__":
