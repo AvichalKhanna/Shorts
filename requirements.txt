@@ -3,7 +3,7 @@ requests
 beautifulsoup4
 
 # Playwright (browser automation + recording + verification)
-playwright
+playwright==1.60.0
 
 # Groq (TTS + optional Whisper)
 groq
