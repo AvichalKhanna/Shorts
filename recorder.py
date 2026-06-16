@@ -76,7 +76,7 @@ async def _wait_for_page_ready(page, timeout: int = 25_000) -> None:
 # ─────────────────────────────────────────────
 
 async def _natural_scroll(page, total_height: int) -> None:
-    steps = int(((total_height / 900) * 100) + 20)
+    steps = int(((total_height / 900) * 50))
     chunk = total_height / steps
     for i in range(steps):
         # ease-in-out: slow start, fast middle, slow end
@@ -87,9 +87,9 @@ async def _natural_scroll(page, total_height: int) -> None:
 
         # pause longer at start and end, shorter in middle
         if i < 2 or i > steps - 3:
-            await page.wait_for_timeout(20)
+            await page.wait_for_timeout(10)
         else:
-            await page.wait_for_timeout(5)
+            await page.wait_for_timeout(4)
 
 
 # ─────────────────────────────────────────────
