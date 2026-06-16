@@ -24,10 +24,10 @@ PHONE_PROFILE = {
     "device_scale_factor": 1,
 }
 
-# ── Desktop profile ────────────────────────────────────────────────────────────
+# ── Desktop profile — 1280×720 (reduced from 1440×900 to save RAM) ────────────
 DESKTOP_PROFILE = {
-    "viewport":          {"width": 1440, "height": 900},
-    "video_size":        {"width": 1440, "height": 900},
+    "viewport":          {"width": 1280, "height": 720},
+    "video_size":        {"width": 1280, "height": 720},
     "user_agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -37,6 +37,18 @@ DESKTOP_PROFILE = {
     "has_touch":         False,
     "device_scale_factor": 1,
 }
+
+# Chromium flags to prevent OOM crashes on low-RAM environments (Render free tier)
+CHROMIUM_ARGS = [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",   # use /tmp instead of /dev/shm (only 64MB on Render)
+    "--disable-gpu",
+    "--single-process",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--disable-default-apps",
+    "--mute-audio",
+]
 
 
 def _url_to_filename(url: str) -> str:
@@ -88,7 +100,7 @@ async def _natural_scroll(page, total_height: int) -> None:
         # pause longer at start and end, shorter in middle
         if i < 2 or i > steps - 3:
             await page.wait_for_timeout(200 if steps < 100 else 125)
-        elif (i%(steps%12)) == 0:
+        elif (i % (steps % 12)) == 0:
             await page.wait_for_timeout(1250 if steps < 100 else 750)
         else:
             await page.wait_for_timeout(100 if steps < 100 else 75)
@@ -101,14 +113,14 @@ async def _natural_scroll(page, total_height: int) -> None:
 async def record_portfolio(
     portfolio: Portfolio,
     *,
-    phone: bool = False,          # ← default is DESKTOP
+    phone: bool = False,
     linger_top_ms: int = 100,
     linger_bottom_ms: int = 100,
     output_dir: Path = RECORDINGS_DIR,
 ) -> Path:
     """
     Record a portfolio website as a .webm video.
-    phone=False → 1440×900 desktop layout (default)
+    phone=False → 1280×720 desktop layout (default)
     phone=True  → 390×844 vertical iPhone layout
     """
     profile     = PHONE_PROFILE if phone else DESKTOP_PROFILE
@@ -121,7 +133,10 @@ async def record_portfolio(
     print(f"   Viewport: {vp['width']}×{vp['height']}  →  {output_path}")
 
     async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=True)
+        browser = await pw.chromium.launch(
+            headless=True,
+            args=CHROMIUM_ARGS,
+        )
 
         context: BrowserContext = await browser.new_context(
             viewport=profile["viewport"],
@@ -196,9 +211,9 @@ if __name__ == "__main__":
     import sys
 
     async def main():
-        # python portfolio_recorder.py                          → queue, desktop
-        # python portfolio_recorder.py https://example.com     → specific, desktop
-        # python portfolio_recorder.py https://x.com phone     → specific, phone
+        # python recorder.py                          → queue, desktop
+        # python recorder.py https://example.com     → specific, desktop
+        # python recorder.py https://x.com phone     → specific, phone
         phone = len(sys.argv) > 2 and sys.argv[2] == "phone"
 
         if len(sys.argv) > 1:
